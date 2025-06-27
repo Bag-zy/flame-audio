@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple TTS Test</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+    textarea { width: 100%; height: 100px; margin-bottom: 10px; }
+    button { padding: 8px 16px; background: #0070f3; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .error { color: red; margin: 10px 0; }
+    .loading { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(0,0,0,0.1); border-radius: 50%; border-top-color: #0070f3; animation: spin 1s linear infinite; margin-left: 10px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <h1>Simple TTS Test</h1>
+  
+  <div>
+    <textarea id="text">Hello, this is a test of the text-to-speech API.</textarea>
+  </div>
+  
+  <div>
+    <button id="generate">Generate Speech</button>
+    <span id="loading" class="loading" style="display: none;"></span>
+  </div>
+  
+  <div id="error" class="error" style="display: none;"></div>
+  
+  <div id="audio-container" style="margin-top: 20px; display: none;">
+    <audio id="audio-player" controls style="width: 100%;"></audio>
+  </div>
+  
+  <script>
+    document.getElementById('generate').addEventListener('click', async () => {
+      const text = document.getElementById('text').value;
+      
+      if (!text.trim()) {
+        document.getElementById('error').textContent = 'Please enter some text';
+        document.getElementById('error').style.display = 'block';
+        return;
+      }
+      
+      // Show loading
+      document.getElementById('loading').style.display = 'inline-block';
+      document.getElementById('generate').disabled = true;
+      document.getElementById('error').style.display = 'none';
+      document.getElementById('audio-container').style.display = 'none';
+      
+      try {
+        // Create form data
+        const formData = new FormData();
+        formData.append('text', text);
+        formData.append('voice', 'Kore');
+        formData.append('isMultiSpeaker', 'false');
+        
+        // Call API
+        const response = await fetch('/api/text-to-speech', {
+          method: 'POST',
+          body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || data.details || 'Failed to generate speech');
+        }
+        
+        // Set audio source
+        const audioPlayer = document.getElementById('audio-player');
+        
+        // Create source element
+        audioPlayer.innerHTML = '';
+        const source = document.createElement('source');
+        source.src = `data:audio/wav;base64,${data.audioData}`;
+        source.type = 'audio/wav';
+        audioPlayer.appendChild(source);
+        
+        // Add fallback text
+        audioPlayer.appendChild(document.createTextNode('Your browser does not support the audio element.'));
+        
+        // Load and show the audio player
+        audioPlayer.load();
+        document.getElementById('audio-container').style.display = 'block';
+        
+        // Add download button
+        const downloadBtn = document.createElement('button');
+        downloadBtn.textContent = 'Download Audio';
+        downloadBtn.style.marginTop = '10px';
+        downloadBtn.onclick = () => {
+          const link = document.createElement('a');
+          link.href = `data:audio/wav;base64,${data.audioData}`;
+          link.download = 'audio.wav';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        };
+        document.getElementById('audio-container').appendChild(downloadBtn);
+      } catch (error) {
+        document.getElementById('error').textContent = error.message || 'An error occurred';
+        document.getElementById('error').style.display = 'block';
+      } finally {
+        // Hide loading
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('generate').disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

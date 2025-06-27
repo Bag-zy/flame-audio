@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 255, 255, 255;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+/* Custom styles */
+.gradient-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-600;
+}
+
+.btn-primary {
+  @apply px-6 py-3 rounded-lg font-medium bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:opacity-90 transition-all duration-200;
+}
+
+.btn-secondary {
+  @apply px-6 py-3 rounded-lg font-medium bg-white/10 text-white hover:bg-white/20 transition-all duration-200 border border-white/20;
+}
+
+.section-padding {
+  @apply py-16 md:py-24 lg:py-32;
+}
+
+.container {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}

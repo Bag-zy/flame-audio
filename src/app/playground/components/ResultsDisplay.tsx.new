@@ -1,0 +1,497 @@
+'use client';
+
+import { useState, useRef, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Icons } from '@/components/ui/icons';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { formatDuration } from '@/lib/utils/format';
+import { motion, AnimatePresence } from 'framer-motion';
+
+interface Segment {
+  id: number;
+  start: number;
+  end: number;
+  text: string;
+  speaker?: string;
+  words?: Array<{
+    word: string;
+    start: number;
+    end: number;
+    confidence: number;
+  }>;
+}
+
+interface TranscriptionResult {
+  text: string;
+  language?: string;
+  duration?: number;
+  segments?: Segment[];
+  word_segments?: Array<{
+    word: string;
+    start: number;
+    end: number;
+    confidence: number;
+  }>;
+}
+
+interface ResultsDisplayProps {
+  result: TranscriptionResult;
+  onReset: () => void;
+  task: 'transcribe' | 'translate';
+}
+
+export function ResultsDisplay({ result, onReset, task }: ResultsDisplayProps) {
+  const [activeTab, setActiveTab] = useState('text');
+  const [copied, setCopied] = useState(false);
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
+
+  const copyToClipboard = () => {
+    if (textAreaRef.current) {
+      navigator.clipboard.writeText(textAreaRef.current.value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const downloadFile = (content: string, extension: string) => {
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `transcription-${new Date().toISOString()}.${extension}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const formatAsSRT = (segments: Segment[] = []) => {
+    return segments
+      .map((segment, index) => {
+        const start = new Date(segment.start * 1000).toISOString().substr(11, 12);
+        const end = new Date(segment.end * 1000).toISOString().substr(11, 12);
+        return `${index + 1}\n${start} --> ${end}\n${segment.text}\n`;
+      })
+      .join('\n');
+  };
+
+  const formatAsVTT = (segments: Segment[] = []) => {
+    let vtt = 'WEBVTT\n\n';
+    segments.forEach((segment, index) => {
+      const start = new Date(segment.start * 1000).toISOString().substr(11, 12);
+      const end = new Date(segment.end * 1000).toISOString().substr(11, 12);
+      vtt += `${index + 1}\n${start} --> ${end}`;
+      if (segment.speaker) {
+        vtt += ` <v ${segment.speaker}>`;
+      }
+      vtt += `\n${segment.text}\n\n`;
+    });
+    return vtt;
+  };
+
+  const formatAsJSON = (data: any) => {
+    return JSON.stringify(data, null, 2);
+  };
+
+  const handleDownload = (format: 'txt' | 'srt' | 'vtt' | 'json') => {
+    let content = '';
+    let extension = format;
+
+    switch (format) {
+      case 'txt':
+        content = result.text;
+        break;
+      case 'srt':
+        content = formatAsSRT(result.segments);
+        extension = 'srt';
+        break;
+      case 'vtt':
+        content = formatAsVTT(result.segments);
+        extension = 'vtt';
+        break;
+      case 'json':
+        content = formatAsJSON(result);
+        extension = 'json';
+        break;
+    }
+
+    downloadFile(content, extension);
+  };
+
+  // Auto-scroll to top when tab changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeTab]);
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
+      {/* Header */}
+      <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-white to-gray-50">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+              <Icons.fileText className="h-5 w-5 text-blue-600 mr-2" />
+              {task === 'translate' ? 'Translation' : 'Transcription'} Results
+            </h2>
+            {result.language && (
+              <div className="mt-2 flex flex-wrap items-center gap-4 text-sm">
+                <span className="inline-flex items-center text-gray-600">
+                  <Icons.globe className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
+                  <span className="font-medium">{result.language}</span>
+                </span>
+                {result.duration && (
+                  <span className="inline-flex items-center text-gray-600">
+                    <Icons.clock className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
+                    <span className="font-medium">{formatDuration(result.duration)}</span>
+                  </span>
+                )}
+                {result.segments && (
+                  <span className="inline-flex items-center text-gray-600">
+                    <Icons.list className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
+                    <span className="font-medium">{result.segments.length} segments</span>
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+          
+          <div className="flex flex-shrink-0 space-x-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onReset}
+              className="group flex items-center transition-colors hover:bg-gray-50"
+            >
+              <Icons.arrowLeft className="h-4 w-4 mr-2 text-gray-500 group-hover:text-gray-700" />
+              New {task === 'translate' ? 'Translation' : 'Transcription'}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <Tabs 
+        value={activeTab} 
+        onValueChange={setActiveTab}
+        className="w-full"
+        defaultValue="text"
+      >
+        <div className="border-b border-gray-100 bg-gray-50">
+          <div className="px-6">
+            <TabsList className="bg-transparent p-0 h-auto border-b-0">
+              <TabsTrigger 
+                value="text" 
+                className="relative px-4 py-3 text-sm font-medium transition-colors hover:text-blue-600 data-[state=active]:text-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+              >
+                <Icons.fileText className="h-4 w-4 mr-2" />
+                Text
+                {activeTab === 'text' && (
+                  <motion.div 
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
+                    layoutId="activeTabIndicator"
+                    transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+              </TabsTrigger>
+              {result.segments && result.segments.length > 0 && (
+                <TabsTrigger 
+                  value="segments"
+                  className="relative px-4 py-3 text-sm font-medium transition-colors hover:text-blue-600 data-[state=active]:text-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                >
+                  <Icons.list className="h-4 w-4 mr-2" />
+                  Segments
+                  {activeTab === 'segments' && (
+                    <motion.div 
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
+                      layoutId="activeTabIndicator"
+                      transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                </TabsTrigger>
+              )}
+              <TabsTrigger 
+                value="json"
+                className="relative px-4 py-3 text-sm font-medium transition-colors hover:text-blue-600 data-[state=active]:text-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+              >
+                <Icons.code className="h-4 w-4 mr-2" />
+                JSON
+                {activeTab === 'json' && (
+                  <motion.div 
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
+                    layoutId="activeTabIndicator"
+                    transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+              </TabsTrigger>
+            </TabsList>
+          </div>
+          
+          <div className="px-6 flex items-center justify-between bg-white border-t border-gray-100 py-2">
+            <div className="text-xs text-gray-500">
+              {activeTab === 'text' && 'Full text content'}
+              {activeTab === 'segments' && 'Timed segments with speaker info'}
+              {activeTab === 'json' && 'Raw JSON data'}
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={copyToClipboard}
+                className="h-8 px-3 text-xs text-gray-600 hover:bg-gray-100"
+              >
+                {copied ? (
+                  <>
+                    <Icons.check className="h-3.5 w-3.5 mr-1.5 text-green-500" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Icons.copy className="h-3.5 w-3.5 mr-1.5 text-gray-500" />
+                    Copy
+                  </>
+                )}
+              </Button>
+              
+              <div className="relative group">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 px-3 text-xs text-gray-600 hover:bg-gray-100"
+                >
+                  <Icons.download className="h-3.5 w-3.5 mr-1.5 text-gray-500" />
+                  Export
+                </Button>
+                
+                <div className="absolute right-0 z-10 mt-1 w-40 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none hidden group-hover:block">
+                  <div className="py-1">
+                    <button
+                      onClick={() => handleDownload('txt')}
+                      className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      <Icons.fileText className="h-4 w-4 mr-2 text-gray-500" />
+                      Text (.txt)
+                    </button>
+                    {result.segments && result.segments.length > 0 && (
+                      <>
+                        <button
+                          onClick={() => handleDownload('srt')}
+                          className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          <Icons.subtitles className="h-4 w-4 mr-2 text-gray-500" />
+                          SRT (.srt)
+                        </button>
+                        <button
+                          onClick={() => handleDownload('vtt')}
+                          className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          <Icons.subtitles className="h-4 w-4 mr-2 text-gray-500" />
+                          WebVTT (.vtt)
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => handleDownload('json')}
+                      className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      <Icons.code className="h-4 w-4 mr-2 text-gray-500" />
+                      JSON (.json)
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Text Tab Content */}
+        <TabsContent value="text" className="p-0">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key="text-content"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="p-6"
+            >
+              <div className="relative">
+                <Textarea
+                  ref={textAreaRef}
+                  value={result.text}
+                  readOnly
+                  className="min-h-[300px] w-full font-sans text-gray-800 bg-gray-50 border-gray-200 hover:bg-gray-50/80 transition-colors rounded-lg p-4 text-base leading-relaxed"
+                />
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        </TabsContent>
+
+        {/* Segments Tab Content */}
+        {result.segments && result.segments.length > 0 && (
+          <TabsContent value="segments" className="p-0">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key="segments-content"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="p-6"
+              >
+                <div className="space-y-6">
+                  {result.segments.map((segment) => (
+                    <div 
+                      key={segment.id} 
+                      className="group relative p-4 -mx-2 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0 mt-1 mr-4">
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-50 text-blue-600">
+                            <Icons.play className="h-4 w-4" />
+                          </div>
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 mb-1.5">
+                            <span className="inline-flex items-center font-mono font-medium">
+                              <Icons.clock className="h-3.5 w-3.5 mr-1.5 text-gray-400" />
+                              {formatDuration(segment.start)} - {formatDuration(segment.end)}
+                            </span>
+                            
+                            {segment.speaker && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                <Icons.user className="h-3 w-3 mr-1.5" />
+                                {segment.speaker}
+                              </span>
+                            )}
+                            
+                            {segment.words?.[0]?.confidence && (
+                              <span 
+                                className="text-xs px-2 py-0.5 rounded-full font-medium"
+                                style={{
+                                  backgroundColor: `rgba(59, 130, 246, ${Math.max(0.1, segment.words[0].confidence * 0.8)})`,
+                                  color: 'white'
+                                }}
+                              >
+                                {Math.round(segment.words[0].confidence * 100)}% confidence
+                              </span>
+                            )}
+                          </div>
+                          
+                          <p className="text-gray-800 text-base leading-relaxed">
+                            {segment.text}
+                          </p>
+                          
+                          {segment.words && segment.words.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {segment.words.map((word, wordIndex) => {
+                                const confidencePercent = Math.round(word.confidence * 100);
+                                
+                                return (
+                                  <button
+                                    key={wordIndex}
+                                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium transition-all hover:shadow-sm`}
+                                    style={{
+                                      backgroundColor: `rgba(219, 234, 254, ${word.confidence * 0.8})`,
+                                      border: `1px solid rgba(147, 197, 253, ${word.confidence * 0.8})`,
+                                    }}
+                                    title={`${word.word}\nStart: ${word.start.toFixed(2)}s\nEnd: ${word.end.toFixed(2)}s\nConfidence: ${confidencePercent}%`}
+                                  >
+                                    <span className="text-gray-800">{word.word}</span>
+                                    <span className="ml-1 text-gray-500 text-[10px] font-normal">
+                                      {confidencePercent}%
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText(segment.text);
+                            setCopied(true);
+                            setTimeout(() => setCopied(false), 2000);
+                          }}
+                          className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                          title="Copy segment"
+                        >
+                          <Icons.copy className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </TabsContent>
+        )}
+        
+        {/* JSON Tab Content */}
+        <TabsContent value="json" className="p-0">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key="json-content"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="p-6"
+            >
+              <div className="relative">
+                <div className="absolute top-4 right-4 z-10 flex space-x-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(formatAsJSON(result));
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                    className="inline-flex items-center px-3 py-1.5 border border-gray-200 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    {copied ? (
+                      <>
+                        <Icons.check className="h-3.5 w-3.5 mr-1.5 text-green-500" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Icons.copy className="h-3.5 w-3.5 mr-1.5 text-gray-500" />
+                        Copy JSON
+                      </>
+                    )}
+                  </button>
+                </div>
+                
+                <pre className="bg-gray-900 p-5 rounded-lg overflow-auto text-sm text-gray-300 font-mono relative">
+                  <code className="whitespace-pre-wrap break-words">
+                    {formatAsJSON(result)}
+                  </code>
+                </pre>
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        </TabsContent>
+      </Tabs>
+      
+      <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
+        <div className="text-sm text-gray-500">
+          {result.segments ? `${result.segments.length} segments` : 'Processing complete'}
+        </div>
+        <div className="flex space-x-2">
+          <Button variant="outline" size="sm" onClick={onReset}>
+            <Icons.arrowLeft className="h-4 w-4 mr-2" />
+            Start New
+          </Button>
+          <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+            <Icons.save className="h-4 w-4 mr-2" />
+            Save to Library
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}

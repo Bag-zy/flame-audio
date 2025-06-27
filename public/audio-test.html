@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audio Test</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+    textarea { width: 100%; height: 200px; margin-bottom: 10px; font-family: monospace; }
+    button { padding: 8px 16px; background: #0070f3; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+    .error { color: red; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>Audio Test</h1>
+  
+  <p>Paste base64 audio data below:</p>
+  <textarea id="audio-data" placeholder="Paste base64 audio data here..."></textarea>
+  
+  <div>
+    <button id="play-wav">Play as WAV</button>
+    <button id="play-mp3">Play as MP3</button>
+    <button id="download">Download</button>
+  </div>
+  
+  <div id="error" class="error" style="display: none;"></div>
+  
+  <div id="audio-container" style="margin-top: 20px;">
+    <audio id="audio-player" controls style="width: 100%;"></audio>
+  </div>
+  
+  <script>
+    const audioData = document.getElementById('audio-data');
+    const audioPlayer = document.getElementById('audio-player');
+    const errorElement = document.getElementById('error');
+    
+    document.getElementById('play-wav').addEventListener('click', () => {
+      playAudio('audio/wav');
+    });
+    
+    document.getElementById('play-mp3').addEventListener('click', () => {
+      playAudio('audio/mp3');
+    });
+    
+    document.getElementById('download').addEventListener('click', () => {
+      downloadAudio();
+    });
+    
+    function playAudio(mimeType) {
+      const data = audioData.value.trim();
+      if (!data) {
+        showError('Please paste base64 audio data');
+        return;
+      }
+      
+      try {
+        audioPlayer.src = `data:${mimeType};base64,${data}`;
+        audioPlayer.load();
+        errorElement.style.display = 'none';
+      } catch (error) {
+        showError(`Error loading audio: ${error.message}`);
+      }
+    }
+    
+    function downloadAudio() {
+      const data = audioData.value.trim();
+      if (!data) {
+        showError('Please paste base64 audio data');
+        return;
+      }
+      
+      try {
+        const link = document.createElement('a');
+        link.href = `data:audio/wav;base64,${data}`;
+        link.download = 'audio.wav';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        errorElement.style.display = 'none';
+      } catch (error) {
+        showError(`Error downloading audio: ${error.message}`);
+      }
+    }
+    
+    function showError(message) {
+      errorElement.textContent = message;
+      errorElement.style.display = 'block';
+    }
+    
+    // Handle audio errors
+    audioPlayer.addEventListener('error', () => {
+      showError('Error playing audio. The format may not be supported by your browser.');
+    });
+  </script>
+</body>
+</html>

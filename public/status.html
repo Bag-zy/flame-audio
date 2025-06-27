@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TTS API Status</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+    .status { padding: 15px; border-radius: 4px; margin: 20px 0; }
+    .status.ok { background-color: #d4edda; color: #155724; }
+    .status.error { background-color: #f8d7da; color: #721c24; }
+    .status.loading { background-color: #cce5ff; color: #004085; }
+    button { padding: 8px 16px; background: #0070f3; color: white; border: none; border-radius: 4px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>TTS API Status</h1>
+  
+  <div id="status" class="status loading">
+    Checking API status...
+  </div>
+  
+  <button id="check">Check Again</button>
+  
+  <script>
+    const statusElement = document.getElementById('status');
+    const checkButton = document.getElementById('check');
+    
+    async function checkStatus() {
+      statusElement.className = 'status loading';
+      statusElement.textContent = 'Checking API status...';
+      checkButton.disabled = true;
+      
+      try {
+        const response = await fetch('/api/tts-status');
+        const data = await response.json();
+        
+        if (data.available) {
+          statusElement.className = 'status ok';
+          statusElement.textContent = '✓ ' + data.message;
+        } else {
+          statusElement.className = 'status error';
+          statusElement.textContent = '✗ ' + data.message;
+        }
+      } catch (error) {
+        statusElement.className = 'status error';
+        statusElement.textContent = '✗ Error checking API status: ' + (error.message || 'Unknown error');
+      } finally {
+        checkButton.disabled = false;
+      }
+    }
+    
+    checkButton.addEventListener('click', checkStatus);
+    
+    // Check status on page load
+    checkStatus();
+  </script>
+</body>
+</html>
