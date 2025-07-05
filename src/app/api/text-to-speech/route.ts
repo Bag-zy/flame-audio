@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import https from 'https';
+import { getToken } from 'next-auth/jwt';
 
 // Define supported voices
 export const VOICE_OPTIONS = [
@@ -141,6 +142,24 @@ async function callGoogleTTS(apiKey: string, text: string, voiceName: string, is
 }
 
 export async function POST(request: Request) {
+  // Check if authentication is enabled
+  const authEnabled = process.env.NEXT_PUBLIC_AUTH_ENABLED !== 'false';
+  
+  if (authEnabled) {
+    // Verify user authentication
+    const token = await getToken({ 
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET 
+    });
+    
+    if (!token) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Authentication required' }), 
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+  }
+  
   try {
     // Parse form data
     const formData = await request.formData();
