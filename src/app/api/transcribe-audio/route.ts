@@ -5,25 +5,7 @@ import { getToken } from 'next-auth/jwt';
 export const maxDuration = 300; // 5 minutes max execution time
 
 export async function POST(request: Request) {
-  // Check if authentication is enabled
-  const authEnabled = process.env.NEXT_PUBLIC_AUTH_ENABLED !== 'false';
-  
-  if (authEnabled) {
-    // Verify user authentication
-    const token = await getToken({ 
-      req: request,
-      secret: process.env.NEXTAUTH_SECRET,
-      cookieName: process.env.NODE_ENV === 'production' ? '__Secure-next-auth.session-token' : 'next-auth.session-token'
-    });
-    
-    if (!token) {
-      return new NextResponse(
-        JSON.stringify({ error: 'Authentication required' }), 
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-  }
-  
+
   try {
     // Parse form data
     const formData = await request.formData();
