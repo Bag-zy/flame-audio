@@ -19,7 +19,7 @@ export default function Hero() {
         
         <div className="flex flex-col sm:flex-row justify-center gap-4 mb-16">
           <Link 
-            href="/signup" 
+            href="/playground" 
             className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-8 py-4 text-lg"
           >
             Get Started for Free
