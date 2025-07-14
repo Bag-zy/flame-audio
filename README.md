@@ -4,7 +4,7 @@ Transform audio with AI-powered speech technology. Convert speech to text and te
 
 ## Features
 
-- **Speech-to-Text**: Transcribe audio files with 98.5% accuracy
+- **Speech-to-Text**: Transcribe audio files with High  accuracy
 - **Text-to-Speech**: Generate natural-sounding audio from text
 - **Multi-language Support**: Support for 50+ languages
 - **Real-time Processing**: Fast audio processing and transcription
