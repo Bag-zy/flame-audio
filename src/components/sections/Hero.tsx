@@ -41,7 +41,7 @@ export default function Hero() {
           <div className="bg-black rounded-lg p-4 font-mono text-left text-sm md:text-base">
             <p className="text-green-400">$ flameaudio process --file meeting.mp4 --task transcribe --language en</p>
             <p className="text-white mt-2">✓ Transcribed 45 minutes of audio in 12 seconds</p>
-            <p className="text-white">✓ 98.5% accuracy with speaker diarization</p>
+            <p className="text-white">✓ High accuracy with speaker diarization</p>
             <p className="text-white">✓ Ready for analysis and export</p>
           </div>
         </div>
